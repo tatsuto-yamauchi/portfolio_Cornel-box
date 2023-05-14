@@ -1,0 +1,413 @@
+<!-- Licensed under a BSD license. See license.html for license -->
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>ex6</title>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+        }
+
+        #c {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="c"></canvas>
+</body>
+<script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.148.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.148.0/examples/jsm/"
+    }
+  }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    
+    import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+    import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import GUI from 'https://cdn.jsdelivr.net/npm/lil-gui@0.17/+esm';
+
+
+    
+        function main() {
+            const canvas = document.querySelector('#c');
+            const renderer = new THREE.WebGLRenderer({ canvas });
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    
+            const fov = 40;
+            const aspect = 2;  // the canvas default
+            const near = 0.1;
+            const far = 1000;
+            const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+            camera.position.z = 250;
+            camera.position.x =0;
+            camera.position.y = 0;
+
+    
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xAAAAAA);
+
+            //controls
+            let controls;
+            controls = new OrbitControls( camera, renderer.domElement );
+        
+
+            //light
+            {
+                const color = 0xFFFFFF;
+                const intensity = 0.5;
+                const light = new THREE.AmbientLight(color, intensity);
+                light.position.set( 0, 40, 50 );
+                scene.add(light);
+            }
+            function hemisphere(){
+                const skyColor = 0xB1E1FF;
+                const groundColor = 0xB97A20;
+                const intensity = 1;
+                const hemis_light = new THREE.HemisphereLight(skyColor, groundColor, intensity);
+                hemis_light.position.set( 0, 40, 50 );
+                scene.add(hemis_light);
+                return hemis_light
+            }
+            function point(){
+                const color = 0xffffff;  
+                const intensity = 1;
+                const distance = 0;
+                const decay = 2;
+                const point_light = new THREE.PointLight(color, intensity, distance, decay);
+                point_light.position.set( 0, 40, 50 );
+                point_light.castShadow = true;
+                scene.add(point_light);
+                return point_light
+            }
+            function spot(){
+                const color = 0xffffff;  
+                const intensity = 1;
+                const distance = 0;
+                const angle = 1
+                const penumbra = 0;
+                const decay = 2;
+                const spot_light = new THREE.SpotLight(color, intensity, distance,angle,penumbra, decay);
+                spot_light.position.set( 0, 40, 50 );
+                spot_light.castShadow = true;
+                scene.add(spot_light);
+                return spot_light
+            }
+            function directional(){
+                const color = 0xffffff;  
+                const intensity = 1;
+                const directional_light = new THREE.DirectionalLight(color, intensity);
+                directional_light.position.set( 0, 40, 50 );
+                directional_light.castShadow = true;
+                scene.add(directional_light);
+                return directional_light
+            }
+        
+
+            //GUI
+            const gui = new GUI();
+
+
+            const group = new THREE.Group();
+
+            function box(x, y, z, w, h, d, c)  {
+                const geometry = new THREE.BoxGeometry( w, h, d );
+                const material = new THREE.MeshLambertMaterial( {color: c} );
+                const cube = new THREE.Mesh( geometry, material );
+                cube.position.set(x,y,z);
+                return cube;
+            }    
+
+            function sphere(x,y,z,w,h,d){
+                const geometry = new THREE.SphereGeometry(w, h, d);
+                const material = new THREE.MeshPhysicalMaterial( { color: 0xffff00 } );
+                const sphere = new THREE.Mesh( geometry, material );
+                sphere.position.set(x,y,z);
+                // scene.add( sphere );
+                return sphere;
+            }
+            function cone(x,y,z,w,h,d){
+                const geometry = new THREE.ConeGeometry(w, h, d);
+                const material = new THREE.MeshLambertMaterial( { color: 0xffff00 } );
+                const cone = new THREE.Mesh( geometry, material );
+                cone.position.set(x,y,z);
+                return cone;
+            }
+            function cylinder(x,y,z,w,h,d,s){
+                const geometry = new THREE.CylinderGeometry(w, h, d, s);
+                const material = new THREE.MeshPhongMaterial( { color: 0xffff00 } );
+                const cylinder = new THREE.Mesh( geometry, material );
+                cylinder.position.set(x,y,z);
+                return cylinder;
+            }
+            
+            //pillar
+            var color = 0xdcdcdc;
+            const boxL1 = box(0,0,0,5,100,5,color);
+            const boxL2 = box(0,0,100,5,100,5,color);
+            const boxR1 = box(100,0,0,5,100,5,color);
+            const boxR2 = box(100,0,100,5,100,5,color);
+            boxL1.add(boxL2)
+            boxL1.add(boxR1)
+            boxL1.add(boxR2)
+
+            //side wall
+            function side_wall(x,y,z,w,h,d){
+                var arr = new Array(3);
+                var color1 = 0xdcdcdc;
+                var color2 = 0xadff2f;
+                arr[0] = box(x,y,z,w,h,d,color1)
+                arr[1] = box(0,-7,0,w-4,h*2,d-4,color2)
+                arr[2] = box(0,-7,0,w,h,d,color1)
+                return arr
+            }
+           
+            var sideWallB = side_wall(50,47.5,0,100,5,5)
+            // console.log(sideWall[0])
+            const topBack = sideWallB[0]
+            const wallBack = sideWallB[1]
+            const belowBack = sideWallB[2]
+            boxL1.add(topBack);
+            topBack.add(wallBack)
+            wallBack.add(belowBack)
+
+            var sideWallL = side_wall(0,47.5,50,5,5,100)
+            const topLeft = sideWallL[0]
+            const wallLeft = sideWallL[1]
+            const belowLeft = sideWallL[2]
+            boxL1.add(topLeft);
+            topLeft.add(wallLeft)
+            wallLeft.add(belowLeft)
+
+            var sideWallR = side_wall(100,47.5,50,5,5,100)
+            const topRight = sideWallR[0]
+            const wallRight = sideWallR[1]
+            const belowRight = sideWallR[2]
+            boxL1.add(topRight);
+            topRight.add(wallRight)
+            wallRight.add(belowRight)
+
+            var sideWallF = side_wall(50,47.5,100,100,5,5)
+            const topFront = sideWallF[0]
+            const wallFront = sideWallF[1]
+            const belowFront = sideWallF[2]
+            boxL1.add(topFront);
+            topFront.add(wallFront)
+            wallFront.add(belowFront)
+
+            //ceiling
+            var color = 0xdcdcdc;
+            const cieling = box(50,47.5,50,100,2,100,color);
+            boxL1.add(cieling)
+
+            //ceiling light
+            //check box
+            const obj = {
+                Directional: false,
+                Point: false,
+                Spot: false,
+                Hemisphere: false,
+            }
+
+            
+
+            var directionalLight = directional()
+            console.log(directionalLight)
+            const folderDirectional = gui.addFolder( 'Directional' );
+            folderDirectional.add(obj, 'Directional')
+            folderDirectional.addColor( directionalLight, 'color');
+            folderDirectional.add( directionalLight, 'intensity',0,1 );
+            folderDirectional.add(directionalLight.shadow.mapSize,'x', 100,1024).name('mapSizeX')
+            folderDirectional.add(directionalLight.shadow.mapSize,'y', 100,1024).name('mapSizeY')
+            folderDirectional.add(directionalLight.shadow.camera,'near', 0,100).name('shadow.Camera.near')
+            folderDirectional.add(directionalLight.shadow.camera,'far', 0,1000).name('shadow.Camera.far')
+            
+
+            
+
+            var pointLight = point()
+            const folderPoint = gui.addFolder( 'Point' );
+            console.log(pointLight)
+            folderPoint.add(obj, 'Point')
+            folderPoint.addColor( pointLight, 'color');
+            folderPoint.add( pointLight, 'intensity',0,1 );
+            folderPoint.add( pointLight, 'distance');
+            folderPoint.add( pointLight, 'decay');
+            folderPoint.add(pointLight.shadow.mapSize,'x', 100,1024).name('mapSizeX')
+            folderPoint.add(pointLight.shadow.mapSize,'y', 100,1024).name('mapSizeY')
+            folderPoint.add(pointLight.shadow.camera,'near', 0,100).name('shadow.Camera.near')
+            folderPoint.add(pointLight.shadow.camera,'far', 0,1000).name('shadow.Camera.far')
+
+            var spotLight = spot()
+            console.log(spotLight)
+            const folderSpot = gui.addFolder( 'Spot' );
+            folderSpot.add(obj, 'Spot')
+            folderSpot.addColor( spotLight, 'color');
+            folderSpot.add( spotLight, 'intensity',0,1 );
+            folderSpot.add( spotLight, 'distance');
+            folderSpot.add( spotLight, 'angle')
+            folderSpot.add( spotLight, 'penumbra',0,1)
+            folderSpot.add( spotLight, 'decay');
+            folderSpot.add(spotLight.shadow.mapSize,'x', 100,1024).name('mapSizeX')
+            folderSpot.add(spotLight.shadow.mapSize,'y', 100,1024).name('mapSizeY')
+            folderSpot.add(spotLight.shadow.camera,'near', 0,100).name('shadow.Camera.near')
+            folderSpot.add(spotLight.shadow.camera,'far', 0,1000).name('shadow.Camera.far')
+
+            var hemisLight = hemisphere()
+            const folderHemis = gui.addFolder( 'Hemisphere' );
+            folderHemis.add(obj, 'Hemisphere');
+            folderHemis.addColor( hemisLight, 'color');
+            folderHemis.addColor( hemisLight, 'groundColor');
+            folderHemis.add( hemisLight, 'intensity',0,1 );
+            
+        
+
+            //floar
+            var color = 0xffffff;
+            const floar = box(50,-51,50,105,2,105,color);
+            floar.receiveShadow = true;
+            boxL1.add(floar)
+
+            //rightWall
+            var color = 0xff0000;
+            const rightWall = box(0,-9,50,2,82,100,color);
+            boxL1.add(rightWall)
+
+            //leftWall
+            var color = 0x008000;
+            const leftWall = box(100,-9,50,2,82,100,color);
+            boxL1.add(leftWall)
+
+            //backWall
+            var color = 0xffffff;
+            var backWall = box(50,-9,0,100,82,2,color);
+            boxL1.add(backWall)
+            
+
+
+
+            //table
+            var color = 0xdcdcdc;
+            const table = new THREE.Group();
+            const tableLegL1 = box(30,-40,30,2,20,2,color);
+            const tableLegR1 = box(40,0,0,2,20,2,color);
+            const tableLegL2 = box(0,0,30,2,20,2,color);
+            const tableLegR2 = box(40,0,30,2,20,2,color);
+            const flatTable = box(20,10,15,50,2,40,color)
+            table.add(tableLegL1);
+            tableLegL1.add(tableLegR1)
+            tableLegL1.add(tableLegL2)
+            tableLegL1.add(tableLegR2)
+            tableLegL1.add(flatTable)
+            boxL1.add(table)
+            flatTable.receiveShadow = true;
+            flatTable.castShadow = true;
+
+            const coneLeft = cone(35,-24.5,40,6,8,16);
+            coneLeft.receiveShadow = true;
+            coneLeft.castShadow = true;
+            const sphereCenter = sphere(53,-24.5,50,5,32,16)
+            sphereCenter.receiveShadow = true;
+            sphereCenter.castShadow = true;
+            const cylinderRight = cylinder(70,-24.5,40,4,4,8,12);
+            cylinderRight.receiveShadow = true;
+            cylinderRight.castShadow = true;
+            table.add(coneLeft)
+            table.add(sphereCenter)
+            table.add(cylinderRight)
+
+
+
+
+
+            group.add(boxL1);
+            group.position.x=-50
+            scene.add( group );
+    
+            function resizeRendererToDisplaySize(renderer) {
+                const canvas = renderer.domElement;
+                const width = canvas.clientWidth;
+                const height = canvas.clientHeight;
+                const needResize = canvas.width !== width || canvas.height !== height;
+                if (needResize) {
+                    renderer.setSize(width, height, false);
+                }
+                return needResize;
+            }
+
+            directionalLight.target = sphereCenter;
+            spotLight.target=sphereCenter
+
+            const helper_direc = new THREE.CameraHelper( directionalLight.shadow.camera );
+            scene.add( helper_direc );
+            const helper_point = new THREE.CameraHelper( pointLight.shadow.camera );
+            scene.add( helper_point );
+            const helper_spot = new THREE.CameraHelper( spotLight.shadow.camera );
+            scene.add( helper_spot );
+
+            function render() {
+    
+                if (resizeRendererToDisplaySize(renderer)) {
+                    const canvas = renderer.domElement;
+                    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+                    camera.updateProjectionMatrix();
+                }
+
+                
+                console.log(spotLight)
+
+                if(obj.Hemisphere==true){
+                    hemisLight.visible = true
+                }else{
+                    hemisLight.visible = false
+                }
+                if(obj.Point==true){
+                    pointLight.visible = true
+                    helper_point.visible= true
+                }else{
+                    pointLight.visible = false
+                    helper_point.visible=false
+                }
+                if(obj.Spot==true){
+                    spotLight.visible = true
+                    helper_spot.visible=true
+                }else{
+                    spotLight.visible = false
+                    helper_spot.visible=false
+                }
+                if(obj.Directional==true){
+                    directionalLight.visible = true
+                    helper_direc.visible=true
+                }else{
+                    directionalLight.visible = false
+                    helper_direc.visible=false
+                }
+                
+                renderer.render(scene, camera);
+                
+                requestAnimationFrame(render);
+                
+            }
+    
+            requestAnimationFrame(render);
+        }main();
+
+    </script>
+    
+    </html>
